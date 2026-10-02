@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Waypoint Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cover:#2c4430; --cover-2:#263b29;
+  --page:#e3e8d4; --grid:rgba(31,42,28,.09);
+  --ink:#1d271b; --ink-soft:#56614f; --edge:#1d271b;
+  --red:#a8322b; --red-ink:#fff6ef;
+  --lapis:#2e4f9e; --gold:#a8770e;
+  --field:#f2f5e8; --scrim:rgba(10,16,9,.62);
+  --head:"Pixelify Sans", "Courier New", ui-monospace, monospace;
+  --num:"VT323", "Courier New", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --cover:#0f170f; --cover-2:#0c130c;
+    --page:#1b2319; --grid:rgba(227,232,212,.06);
+    --ink:#e3e8d4; --ink-soft:#9da890; --edge:#070b06;
+    --red:#d2493f; --red-ink:#fff6ef;
+    --lapis:#7f9cf0; --gold:#e2b448;
+    --field:#141b13; --scrim:rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --cover:#0f170f; --cover-2:#0c130c;
+  --page:#1b2319; --grid:rgba(227,232,212,.06);
+  --ink:#e3e8d4; --ink-soft:#9da890; --edge:#070b06;
+  --red:#d2493f; --red-ink:#fff6ef;
+  --lapis:#7f9cf0; --gold:#e2b448;
+  --field:#141b13; --scrim:rgba(0,0,0,.7);
+  color-scheme: dark;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+html,body{ margin:0; }
+body{
+  min-height:100%;
+  background-color:var(--cover);
+  background-image:repeating-conic-gradient(var(--cover-2) 0 25%, transparent 0 50%);
+  background-size:16px 16px;
+  color:var(--ink);
+  font-family:var(--head);
+  font-size:17px; line-height:1.4;
+  -webkit-font-smoothing:none;
+}
+button,input,textarea{ font:inherit; color:inherit; }
+:focus-visible{ outline:3px solid var(--gold); outline-offset:3px; }
+
+/* chunky stepped border */
+.px{
+  box-shadow:0 -4px 0 0 var(--edge), 0 4px 0 0 var(--edge), -4px 0 0 0 var(--edge), 4px 0 0 0 var(--edge);
+}
+
+.book{
+  max-width:640px; margin:20px auto 40px; padding:0 12px;
+}
+.sheetpage{
+  background-color:var(--page);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:16px 16px;
+  padding:22px 18px 26px;
+  margin:4px;
+}
+
+.masthead{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+.masthead h1{
+  font-weight:700; font-size:clamp(30px, 8vw, 44px); line-height:1; margin:0;
+  letter-spacing:.5px;
+  text-shadow:3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.tally{ margin:0; font-family:var(--num); font-size:22px; color:var(--ink-soft); }
+
+.capture{ background:var(--field); padding:16px; margin:4px 4px 22px; }
+.capture-row{ display:flex; gap:12px; flex-wrap:wrap; }
+.hint{ margin:12px 0 0; font-size:15px; color:var(--ink-soft); }
+
+.btn{
+  appearance:none; border:0; cursor:pointer;
+  background:var(--page); color:var(--ink);
+  padding:10px 14px; margin:4px;
+  font-family:var(--head); font-weight:600; font-size:16px;
+  box-shadow:0 -3px 0 0 var(--edge), 0 3px 0 0 var(--edge), -3px 0 0 0 var(--edge), 3px 0 0 0 var(--edge), inset -3px -3px 0 0 color-mix(in srgb, var(--ink) 16%, transparent);
+  transition:transform .05s;
+}
+.btn:active{ transform:translateY(2px); box-shadow:0 -3px 0 0 var(--edge), 0 3px 0 0 var(--edge), -3px 0 0 0 var(--edge), 3px 0 0 0 var(--edge), inset 3px 3px 0 0 color-mix(in srgb, var(--ink) 16%, transparent); }
+.btn-red{ background:var(--red); color:var(--red-ink); flex:1 1 180px; font-size:18px; padding:14px; }
+.btn-ghost{ background:transparent; }
+.btn[hidden]{ display:none; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+.tools{ margin-bottom:18px; }
+.search{
+  width:100%; padding:10px 12px; margin:4px 0 14px;
+  background:var(--field); border:0;
+  box-shadow:0 -3px 0 0 var(--edge), 0 3px 0 0 var(--edge), -3px 0 0 0 var(--edge), 3px 0 0 0 var(--edge);
+  font-size:17px;
+}
+.chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.chip{
+  appearance:none; border:2px solid var(--ink); background:transparent; cursor:pointer;
+  padding:4px 10px; font-size:15px; font-family:var(--head);
+}
+.chip[aria-pressed="true"]{ background:var(--ink); color:var(--page); }
+
+.entries{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:18px; }
+.entry{
+  background:var(--field); margin:4px; padding:12px;
+  display:grid; grid-template-columns:44px 1fr; gap:12px; align-items:start;
+}
+.tile{
+  width:44px; height:44px; display:grid; place-items:center;
+  background:var(--c); color:#fff; font-weight:700; font-size:17px;
+  box-shadow:inset -4px -4px 0 rgba(0,0,0,.28), inset 4px 4px 0 rgba(255,255,255,.18);
+}
+.entry-main{ min-width:0; }
+.entry-open{ appearance:none; background:none; border:0; padding:0; text-align:left; cursor:pointer; width:100%; display:block; }
+.entry h3{ margin:0; font-size:19px; font-weight:700; overflow-wrap:anywhere; }
+.entry .type{ margin:2px 0 0; color:var(--ink-soft); font-size:15px; }
+.coords{
+  appearance:none; border:0; background:none; cursor:pointer; padding:2px 0; margin-top:6px;
+  font-family:var(--num); font-size:27px; line-height:1; text-align:left;
+  display:flex; flex-wrap:wrap; gap:4px 14px;
+}
+.coords span b{ font-weight:400; color:var(--ink-soft); margin-right:3px; }
+.meta{ display:flex; flex-wrap:wrap; gap:6px 10px; margin-top:8px; align-items:center; font-size:14px; }
+.dim{ padding:1px 7px; color:#fff; font-size:13px; font-weight:600; }
+.dim-overworld{ background:#4c7a37; } .dim-nether{ background:#8f2c26; } .dim-end{ background:#5b4a85; }
+.alt{ font-family:var(--num); font-size:19px; color:var(--ink-soft); }
+.notes{ margin:8px 0 0; font-size:15px; white-space:pre-wrap; overflow-wrap:anywhere; }
+
+.empty{ text-align:center; color:var(--ink-soft); padding:22px 8px; margin:0; }
+.syncnote{ margin-top:26px; font-size:13px; color:var(--ink-soft); text-align:center; }
+
+/* scanning overlay */
+.scan{ position:fixed; inset:0; background:var(--scrim); display:grid; place-items:center; z-index:30; padding:20px; }
+.scan[hidden], .sheet-wrap[hidden]{ display:none; }
+.scan-card{ background:var(--page); padding:20px; width:min(340px, 100%); text-align:center; margin:4px; }
+.scan-card p{ margin:0 0 14px; font-size:18px; }
+.bar{ display:flex; gap:4px; justify-content:center; margin-bottom:16px; }
+.bar i{ width:14px; height:14px; background:var(--lapis); opacity:.25; animation:blip 1.2s steps(1) infinite; }
+.bar i:nth-child(2){ animation-delay:.2s } .bar i:nth-child(3){ animation-delay:.4s } .bar i:nth-child(4){ animation-delay:.6s } .bar i:nth-child(5){ animation-delay:.8s }
+@keyframes blip{ 0%{opacity:1} 30%{opacity:.25} }
+@media (prefers-reduced-motion: reduce){ .bar i{ animation:none; opacity:.7; } .btn{ transition:none; } }
+
+/* editor sheet */
+.sheet-wrap{ position:fixed; inset:0; background:var(--scrim); z-index:20; display:flex; align-items:flex-end; justify-content:center; }
+@media (min-width:700px){ .sheet-wrap{ align-items:center; } }
+.sheet{
+  background:var(--page);
+  background-image:linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:16px 16px;
+  width:min(600px, 100%); max-height:92%; overflow-y:auto;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));
+  border-top:4px solid var(--edge);
+}
+@media (min-width:700px){ .sheet{ border:4px solid var(--edge); max-height:88%; } }
+.sheet h2{ margin:0 0 4px; font-size:24px; }
+.notice{ margin:6px 0 14px; padding:8px 10px; font-size:15px; background:var(--field); border-left:4px solid var(--lapis); }
+.notice[hidden]{ display:none; }
+.notice.warn{ border-left-color:var(--red); }
+.field-label{ display:block; font-weight:600; margin:16px 0 6px; font-size:16px; }
+.xyz{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+.xyz label{ display:flex; flex-direction:column; gap:4px; font-family:var(--num); font-size:20px; color:var(--ink-soft); }
+.numwrap{ display:flex; }
+.numwrap input{
+  width:100%; min-width:0; border:0; background:var(--field); padding:6px 8px;
+  font-family:var(--num); font-size:28px; color:var(--ink);
+  box-shadow:inset 0 0 0 3px var(--edge);
+}
+.sign{ appearance:none; border:0; background:var(--ink); color:var(--page); width:30px; flex:none; cursor:pointer; font-family:var(--num); font-size:22px; }
+.seg{ display:flex; flex-wrap:wrap; gap:6px; }
+.typegrid{ display:flex; flex-wrap:wrap; gap:6px; }
+.typechip{ appearance:none; cursor:pointer; border:2px solid var(--ink); background:var(--field); padding:5px 9px; font-family:var(--head); font-size:15px; display:inline-flex; align-items:center; gap:6px; }
+.typechip i{ width:10px; height:10px; background:var(--c); display:inline-block; }
+.typechip[aria-pressed="true"]{ background:var(--ink); color:var(--page); }
+.typechip.add{ border-style:dashed; }
+.addrow{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.addrow[hidden]{ display:none; }
+.text, .area{
+  width:100%; border:0; background:var(--field); padding:9px 10px; font-size:17px;
+  box-shadow:inset 0 0 0 3px var(--edge);
+}
+.addrow .text{ flex:1 1 160px; width:auto; }
+.area{ min-height:84px; resize:vertical; }
+.sheet-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; align-items:center; }
+.sheet-actions .spacer{ flex:1; }
+.btn-del{ color:var(--red); background:transparent; }
+.err{ color:var(--red); font-size:14px; margin:6px 0 0; min-height:1em; }
+
+.toast{ position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--page); padding:8px 14px; z-index:40; font-size:15px; }
+.toast[hidden]{ display:none; }
+.sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+/* worlds */
+.appname{ margin:0 0 4px; font-size:15px; color:var(--ink-soft); }
+.world-btn{
+  appearance:none; border:0; background:none; padding:0; cursor:pointer; text-align:left;
+  font-family:var(--head); font-weight:700; font-size:clamp(28px, 8vw, 42px); line-height:1.05;
+  display:inline-flex; align-items:baseline; gap:10px; max-width:100%;
+  text-shadow:3px 3px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.world-btn .wname{ overflow-wrap:anywhere; }
+.world-btn .caret{ font-size:.55em; color:var(--ink-soft); flex:none; }
+.server{ margin:4px 0 0; font-family:var(--num); font-size:21px; color:var(--lapis); overflow-wrap:anywhere; }
+.server[hidden]{ display:none; }
+.masthead{ flex-direction:column; align-items:flex-start; gap:2px; }
+.masthead .tally{ margin-top:6px; }
+.worldlist{ list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:10px; }
+.worldrow{ display:flex; align-items:stretch; gap:8px; }
+.worldpick{
+  appearance:none; flex:1; min-width:0; text-align:left; cursor:pointer; border:0;
+  background:var(--field); padding:10px 12px; font-family:var(--head);
+  box-shadow:inset 0 0 0 3px var(--edge);
+}
+.worldpick[aria-current="true"]{ box-shadow:inset 0 0 0 3px var(--edge), inset 8px 0 0 var(--gold); padding-left:20px; }
+.worldpick strong{ display:block; font-size:18px; overflow-wrap:anywhere; }
+.worldpick span{ display:block; font-size:14px; color:var(--ink-soft); overflow-wrap:anywhere; }
+.worldform{ margin-top:14px; padding:12px; background:var(--field); box-shadow:inset 0 0 0 3px var(--edge); }
+.worldform[hidden]{ display:none; }
+.worldform h3{ margin:0; font-size:18px; }
+</style>
+</head>
+<body>
+<main class="book">
+  <div class="sheetpage px">
+    <header class="masthead">
+      <p class="appname">Waypoint Ledger</p>
+      <button class="world-btn" id="worldBtn" type="button" aria-haspopup="dialog">
+        <span class="wname" id="worldName">My world</span><span class="caret" aria-hidden="true">▾</span>
+      </button>
+      <p class="server" id="worldServer" hidden></p>
+      <p class="tally" id="tally">No places logged yet</p>
+    </header>
+
+    <section class="capture px" aria-label="Log a new place">
+      <div class="capture-row">
+        <button class="btn btn-red" id="snapBtn" type="button">Snap my screen</button>
+        <button class="btn" id="pickBtn" type="button">Pick a screenshot</button>
+        <button class="btn btn-ghost" id="manualBtn" type="button">Type it in</button>
+      </div>
+      <p class="hint" id="captureHint">Screenshots read best (F2 on Java). For photos, get close and keep the XYZ line sharp and glare-free.</p>
+      <input type="file" id="camIn" accept="image/*" capture="environment" class="sr" tabindex="-1" aria-hidden="true">
+      <input type="file" id="fileIn" accept="image/*" class="sr" tabindex="-1" aria-hidden="true">
+    </section>
+
+    <section class="tools" aria-label="Filter">
+      <input class="search" id="q" type="search" placeholder="Search names, types, notes" aria-label="Search">
+      <div class="chips" id="catFilter" role="group" aria-label="Kind">
+        <button class="chip" data-v="all" aria-pressed="true">Everything</button>
+        <button class="chip" data-v="structure" aria-pressed="false">Found structures</button>
+        <button class="chip" data-v="build" aria-pressed="false">My builds</button>
+      </div>
+      <div class="chips" id="dimFilter" role="group" aria-label="Dimension">
+        <button class="chip" data-v="any" aria-pressed="true">All dimensions</button>
+        <button class="chip" data-v="overworld" aria-pressed="false">Overworld</button>
+        <button class="chip" data-v="nether" aria-pressed="false">Nether</button>
+        <button class="chip" data-v="end" aria-pressed="false">End</button>
+      </div>
+    </section>
+
+    <ol class="entries" id="list"></ol>
+    <p class="empty" id="empty">Snap your debug screen to log your first spot.</p>
+    <p class="syncnote">Saved on this device. Photos are read on your phone and never uploaded.</p>
+  </div>
+</main>
+
+<div class="scan" id="scan" hidden role="status" aria-live="polite">
+  <div class="scan-card px">
+    <div class="bar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <p id="scanMsg">Reading the numbers…</p>
+    <button class="btn" id="scanCancel" type="button">Cancel</button>
+  </div>
+</div>
+
+<!-- place editor -->
+<div class="sheet-wrap" id="sheetWrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <h2 id="sheetTitle">New place</h2>
+    <p class="notice" id="sheetNotice" hidden></p>
+
+    <span class="field-label">Coordinates</span>
+    <div class="xyz">
+      <label>X<span class="numwrap"><button type="button" class="sign" data-for="fx" aria-label="Flip X sign">±</button><input id="fx" inputmode="numeric" autocomplete="off"></span></label>
+      <label>Y<span class="numwrap"><button type="button" class="sign" data-for="fy" aria-label="Flip Y sign">±</button><input id="fy" inputmode="numeric" autocomplete="off"></span></label>
+      <label>Z<span class="numwrap"><button type="button" class="sign" data-for="fz" aria-label="Flip Z sign">±</button><input id="fz" inputmode="numeric" autocomplete="off"></span></label>
+    </div>
+    <p class="err" id="coordErr"></p>
+    <div class="addrow" id="rereadRow" hidden>
+      <button class="btn" type="button" id="rereadBtn">Numbers look off? Read again carefully</button>
+    </div>
+
+    <div id="worldPickWrap" hidden>
+      <span class="field-label">World</span>
+      <div class="seg" id="worldSeg" role="group" aria-label="World"></div>
+    </div>
+
+    <span class="field-label">Dimension</span>
+    <div class="seg" id="dimSeg" role="group" aria-label="Dimension">
+      <button class="chip" data-v="overworld">Overworld</button>
+      <button class="chip" data-v="nether">Nether</button>
+      <button class="chip" data-v="end">End</button>
+    </div>
+
+    <span class="field-label">What's here?</span>
+    <div class="seg" id="kindSeg" role="group" aria-label="Kind">
+      <button class="chip" data-v="structure">A structure I found</button>
+      <button class="chip" data-v="build">Something I built</button>
+    </div>
+    <div class="typegrid" id="typeGrid" style="margin-top:12px"></div>
+    <div class="addrow" id="addRow" hidden>
+      <input class="text" id="newType" placeholder="Name your own type" maxlength="40">
+      <button class="btn" type="button" id="addTypeBtn">Add type</button>
+    </div>
+
+    <label class="field-label" for="fname">Name</label>
+    <input class="text" id="fname" placeholder="e.g. Cliffside village" maxlength="80">
+
+    <label class="field-label" for="fnotes">Notes</label>
+    <textarea class="area" id="fnotes" placeholder="Loot left, who lives there, how to get back…" maxlength="2000"></textarea>
+
+    <div class="sheet-actions">
+      <button class="btn btn-del" type="button" id="delBtn" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" type="button" id="cancelBtn">Cancel</button>
+      <button class="btn btn-red" type="button" id="saveBtn" style="flex:0 1 auto">Save place</button>
+    </div>
+  </div>
+</div>
+
+<!-- world switcher -->
+<div class="sheet-wrap" id="worldWrap" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="worldTitle">
+    <h2 id="worldTitle">Your worlds</h2>
+    <ul class="worldlist" id="worldList"></ul>
+
+    <div class="worldform" id="worldForm" hidden>
+      <h3 id="worldFormTitle">New world</h3>
+      <label class="field-label" for="wname">World name</label>
+      <input class="text" id="wname" placeholder="e.g. Survival with friends" maxlength="60">
+      <label class="field-label" for="wserver">Server address (optional)</label>
+      <input class="text" id="wserver" placeholder="e.g. play.example.net" maxlength="100" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <p class="err" id="worldErr"></p>
+      <div class="sheet-actions">
+        <button class="btn btn-del" type="button" id="worldDelBtn" hidden>Delete world</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" type="button" id="worldFormCancel">Cancel</button>
+        <button class="btn btn-red" type="button" id="worldSaveBtn" style="flex:0 1 auto">Save world</button>
+      </div>
+    </div>
+
+    <div class="sheet-actions" id="worldActions">
+      <button class="btn" type="button" id="newWorldBtn">+ New world</button>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" type="button" id="worldClose">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  const STRUCTURES = ["Village","Pillager outpost","Woodland mansion","Ocean monument","Stronghold","Desert pyramid","Jungle pyramid","Swamp hut","Igloo","Shipwreck","Buried treasure","Ocean ruins","Ruined portal","Mineshaft","Dungeon","Ancient city","Trail ruins","Trial chambers","Desert well","Geode","Fossil","Nether fortress","Bastion","End city","End gateway"];
+  const BUILDS = ["Home base","Farm","Mob farm","XP farm","Iron farm","Storage","Nether portal","Mine","Enchanting room","Trading hall","Animal pen","Bed / spawn","Project","Waypoint"];
+  const DIM_HINT = { "Nether fortress":"nether", "Bastion":"nether", "End city":"end", "End gateway":"end" };
+  const DIM_LABEL = { overworld:"Overworld", nether:"Nether", end:"End" };
+  const KIND_COLOR = { structure:"var(--lapis)", build:"var(--gold)" };
+  const LS_KEY = "waypoint-ledger.v1";
+
+  const S = {
+    entries: [], custom: { structure: [], build: [] },
+    worlds: [], currentWorld: null,
+    filter: { cat: "all", dim: "any", q: "" },
+    lastFile: null, scanCancelled: false, draft: null, editingWorld: null
+  };
+  const newId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const isInt = (v) => typeof v === "number" && Number.isFinite(v);
+
+  // ---------- storage ----------
+  function load(){
+    try {
+      const d = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      if (Array.isArray(d.entries)) S.entries = d.entries;
+      if (d.custom) S.custom = { structure: d.custom.structure || [], build: d.custom.build || [] };
+      if (Array.isArray(d.worlds)) S.worlds = d.worlds;
+      S.currentWorld = d.currentWorld || null;
+    } catch (e) {}
+    if (!S.worlds.length) S.worlds.push({ id: newId("w"), name: "My world", server: "", createdAt: Date.now() });
+    const fallback = S.worlds[0].id;
+    for (const e of S.entries) if (!e.worldId || !S.worlds.some(w => w.id === e.worldId)) e.worldId = fallback;
+    if (!S.worlds.some(w => w.id === S.currentWorld)) S.currentWorld = fallback;
+    save();
+  }
+  function save(){
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ entries: S.entries, custom: S.custom, worlds: S.worlds, currentWorld: S.currentWorld })); }
+    catch (e) { toast("Couldn't save. Your browser storage may be full or blocked."); }
+  }
+  const world = () => S.worlds.find(w => w.id === S.currentWorld);
+
+  // ---------- free on-device photo reading (Tesseract.js) ----------
+  const TESS_SRC = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  let tessLoading = null, workerP = null, currentPsm = null;
+  function setScan(msg){ $("scanMsg").textContent = msg; }
+
+  function loadTesseract(){
+    if (window.Tesseract) return Promise.resolve();
+    if (!tessLoading) tessLoading = new Promise((ok, bad) => {
+      const s = document.createElement("script");
+      s.src = TESS_SRC; s.onload = ok;
+      s.onerror = () => { tessLoading = null; s.remove(); bad(new Error("load")); };
+      document.head.append(s);
+    });
+    return tessLoading;
+  }
+  function getWorker(){
+    if (!workerP) {
+      workerP = (async () => {
+        await loadTesseract();
+        return Tesseract.createWorker("eng", 1, {
+          logger: (m) => {
+            if (!m || !m.status) return;
+            if (m.status === "recognizing text") setScan("Reading the numbers… " + Math.round((m.progress || 0) * 100) + "%");
+            else if (/load|initializ/.test(m.status)) setScan("Getting the reader ready (first time only)…");
+          }
+        });
+      })();
+      workerP.catch(() => { workerP = null; });
+    }
+    return workerP;
+  }
+
+  async function decode(file){
+    try { return await createImageBitmap(file); }
+    catch (e) {
+      return await new Promise((ok, bad) => {
+        const url = URL.createObjectURL(file);
+        const i = new Image();
+        i.onload = () => { URL.revokeObjectURL(url); ok(i); };
+        i.onerror = () => { URL.revokeObjectURL(url); bad(new Error("decode")); };
+        i.src = url;
+      });
+    }
+  }
+
+  // Turn the overlay's light text into dark text on white, which the reader handles best.
+  function prepare(img, opt){
+    const sw = Math.round(img.width * (opt.crop ? 0.66 : 1));
+    const sh = Math.round(img.height * (opt.crop ? 0.8 : 1));
+    const small = Math.max(img.width, img.height) <= 2400;
+    let k = small ? (opt.scale || 2) : 1;
+    k = Math.min(k, 2800 / Math.max(sw, sh));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = !small;
+    ctx.drawImage(img, 0, 0, sw, sh, 0, 0, c.width, c.height);
+    const px = ctx.getImageData(0, 0, c.width, c.height), d = px.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      let v;
+      if (opt.mode === "threshold") v = lum > opt.t ? 0 : 255;
+      else v = Math.max(0, Math.min(255, (255 - lum - 40) * 1.7));
+      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+    ctx.putImageData(px, 0, 0);
+    return c;
+  }
+
+  function numsAfter(line, label){
+    let rest = line.slice(line.search(label));
+    rest = rest.replace(label, "").replace(/[—–−~]/g, "-").replace(/[Oo]/g, "0").replace(/,(?=\d)/g, ".");
+    return (rest.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+  }
+  const plausible = (x, y, z) => [x, z].every(v => Math.abs(v) <= 30000000) && (y === null || (y >= -2048 && y <= 2048));
+
+  function parse(text){
+    const lines = text.split(/\n+/);
+    let xyz = null, block = null, pos = null;
+    for (const line of lines) {
+      if (!xyz && /X\s*Y\s*Z/i.test(line)) {
+        const n = numsAfter(line, /X\s*Y\s*Z\s*[:;]?/i);
+        if (n.length >= 3) xyz = n.slice(0, 3).map(Math.floor);
+      }
+      if (!block && /B[l1I]\s*[o0]\s*c\s*k/i.test(line)) {
+        const n = numsAfter(line, /B[l1I]\s*[o0]\s*c\s*k\s*[:;]?/i);
+        if (n.length >= 3) block = n.slice(0, 3).map(Math.floor);
+      }
+      if (!pos && /P[o0]siti[o0]n/i.test(line)) {
+        const n = numsAfter(line, /P[o0]siti[o0]n\s*[:;]?/i);
+        if (n.length >= 3) pos = n.slice(0, 3).map(Math.floor);
+      }
+    }
+    let pick = block || xyz || pos, note = "";
+    if (block && xyz && block.join() !== xyz.join()) note = "The XYZ and Block lines didn't quite match, so double-check.";
+    if (!pick) return null;
+    const [x, y, z] = pick;
+    if (!plausible(x, y, z)) return null;
+    const flat = text.toLowerCase().replace(/\s+/g, "");
+    const dim = /the_?nether/.test(flat) ? "nether" : /the_?end\b|minecraft:the_?end/.test(flat) ? "end" : /overworld/.test(flat) ? "overworld" : null;
+    const b = text.match(/Bi[o0]me\s*[:;]?\s*(?:[a-z]+:)?([a-z_]{3,})/i);
+    return { x, y, z, dim, biome: b ? b[1].replace(/_/g, " ").toLowerCase() : null, note };
+  }
+
+  async function readPhoto(file, careful){
+    S.lastFile = file; S.scanCancelled = false;
+    setScan("Opening the photo…"); $("scan").hidden = false;
+    let img;
+    try { img = await decode(file); }
+    catch (e) { $("scan").hidden = true; openEditor(null, null, "That photo format couldn't be opened. Try a JPG or PNG.", true); return; }
+
+    let worker;
+    try { worker = await getWorker(); }
+    catch (e) { $("scan").hidden = true; openEditor(null, null, "The reader couldn't load. Check your connection (it's only needed the first time), or type the numbers in.", true); return; }
+
+    const passes = careful
+      ? [{ crop: false, mode: "invert", psm: "11", scale: 3 }, { crop: false, mode: "threshold", t: 165, psm: "11", scale: 3 }, { crop: true, mode: "threshold", t: 225, psm: "6", scale: 3 }]
+      : [{ crop: true, mode: "threshold", t: 195, psm: "6" }, { crop: true, mode: "invert", psm: "6" }];
+
+    let found = null;
+    for (const p of passes) {
+      if (S.scanCancelled) return;
+      try {
+        if (currentPsm !== p.psm) { await worker.setParameters({ tessedit_pageseg_mode: p.psm }); currentPsm = p.psm; }
+        const { data } = await worker.recognize(prepare(img, p));
+        if (S.scanCancelled) return;
+        found = parse(data.text || "");
+        if (found) break;
+      } catch (e) {}
+    }
+    $("scan").hidden = true;
+    if (S.scanCancelled) return;
+
+    if (!found) {
+      const msg = careful
+        ? "Still couldn't find coordinates. Try a screenshot, or type them in."
+        : "Couldn't find coordinates in that photo. Try “Read again carefully”, a closer shot of the XYZ line, or type them in.";
+      if (S.draft && careful) setNotice(msg, true);
+      else openEditor(null, null, msg, true, true);
+      return;
+    }
+    let msg = "Read from your photo. Check the numbers before saving." + (found.note ? " " + found.note : "");
+    if (S.draft && careful) { applyPrefill(found); setNotice(msg); }
+    else openEditor(null, found, msg, false, true);
+  }
+
+  // ---------- header + list ----------
+  function initials(s){
+    const w = s.replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (!w.length) return "?";
+    return (w.length > 1 ? w[0][0] + w[1][0] : w[0].slice(0, 2)).replace(/^./, c => c.toUpperCase());
+  }
+  function altLine(e){
+    if (!isInt(e.x) || !isInt(e.z)) return "";
+    if (e.dim === "overworld") return "Nether side: " + Math.floor(e.x / 8) + ", " + Math.floor(e.z / 8);
+    if (e.dim === "nether") return "Overworld side: " + (e.x * 8) + ", " + (e.z * 8);
+    return "";
+  }
+  function renderHeader(){
+    const w = world();
+    $("worldName").textContent = w.name;
+    $("worldServer").hidden = !w.server;
+    $("worldServer").textContent = w.server || "";
+    document.title = w.name + " · Waypoint Ledger";
+  }
+  function render(){
+    renderHeader();
+    const f = S.filter, q = f.q.trim().toLowerCase();
+    const inWorld = S.entries.filter(e => e.worldId === S.currentWorld);
+    const items = inWorld
+      .filter(e => f.cat === "all" || e.kind === f.cat)
+      .filter(e => f.dim === "any" || e.dim === f.dim)
+      .filter(e => !q || [e.name, e.type, e.notes, e.biome].join(" ").toLowerCase().includes(q))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    const n = inWorld.length;
+    $("tally").textContent = n ? n + (n === 1 ? " place logged" : " places logged") : "No places logged yet";
+    $("empty").hidden = items.length > 0;
+    $("empty").textContent = n ? "Nothing matches those filters." : "Snap your debug screen to log your first spot in this world.";
+
+    const list = $("list");
+    list.textContent = "";
+    for (const e of items) {
+      const li = document.createElement("li");
+      li.className = "entry px";
+      const tile = document.createElement("div");
+      tile.className = "tile"; tile.style.setProperty("--c", KIND_COLOR[e.kind] || "var(--lapis)");
+      tile.textContent = initials(e.type || e.name || "?");
+      tile.setAttribute("aria-hidden", "true");
+
+      const main = document.createElement("div"); main.className = "entry-main";
+      const open = document.createElement("button"); open.className = "entry-open"; open.type = "button";
+      open.setAttribute("aria-label", "Edit " + (e.name || e.type || "place"));
+      const h = document.createElement("h3"); h.textContent = e.name || e.type || "Unnamed spot";
+      const t = document.createElement("p"); t.className = "type";
+      t.textContent = (e.type || "No type") + (e.kind === "build" ? ", built by me" : e.kind === "structure" ? ", found" : "");
+      open.append(h, t);
+      open.addEventListener("click", () => openEditor(e));
+
+      const c = document.createElement("button"); c.className = "coords"; c.type = "button";
+      c.setAttribute("aria-label", "Copy coordinates");
+      for (const [k, v] of [["X", e.x], ["Y", e.y], ["Z", e.z]]) {
+        const s = document.createElement("span"); const b = document.createElement("b");
+        b.textContent = k; s.append(b, document.createTextNode(isInt(v) ? String(v) : "?"));
+        c.append(s);
+      }
+      c.addEventListener("click", () => copy([e.x, isInt(e.y) ? e.y : "~", e.z].join(" ")));
+
+      const meta = document.createElement("div"); meta.className = "meta";
+      if (e.dim) { const d = document.createElement("span"); d.className = "dim dim-" + e.dim; d.textContent = DIM_LABEL[e.dim]; meta.append(d); }
+      const a = altLine(e); if (a) { const s = document.createElement("span"); s.className = "alt"; s.textContent = a; meta.append(s); }
+      if (e.biome) { const s = document.createElement("span"); s.textContent = e.biome; s.style.color = "var(--ink-soft)"; meta.append(s); }
+
+      main.append(open, c, meta);
+      if (e.notes) { const p = document.createElement("p"); p.className = "notes"; p.textContent = e.notes; main.append(p); }
+      li.append(tile, main);
+      list.append(li);
+    }
+  }
+
+  // ---------- place editor ----------
+  function openEditor(entry, prefill, notice, warn, fromPhoto){
+    const base = entry ? Object.assign({}, entry) : { id: null, x: null, y: null, z: null, dim: "overworld", kind: "structure", type: null, name: "", notes: "", biome: null, createdAt: null, worldId: S.currentWorld };
+    S.draft = base; S.draft.dimLocked = false;
+    $("sheetTitle").textContent = entry ? "Edit place" : "New place in " + world().name;
+    $("delBtn").hidden = !entry;
+    $("rereadRow").hidden = !(fromPhoto && S.lastFile);
+    fillFields();
+    if (prefill) applyPrefill(prefill);
+    setNotice(notice, warn);
+    $("coordErr").textContent = "";
+    $("addRow").hidden = true;
+    showSheet("sheetWrap");
+    setTimeout(() => (prefill ? $("fname") : $("fx")).focus({ preventScroll: true }), 30);
+  }
+  function applyPrefill(p){
+    const d = S.draft;
+    d.x = p.x; d.y = isInt(p.y) ? p.y : null; d.z = p.z;
+    if (p.dim) { d.dim = p.dim; d.dimLocked = true; }
+    if (p.biome) d.biome = p.biome;
+    $("fx").value = d.x; $("fy").value = d.y ?? ""; $("fz").value = d.z;
+    setSeg("dimSeg", d.dim);
+  }
+  function setNotice(msg, warn){
+    const n = $("sheetNotice");
+    n.hidden = !msg; n.textContent = msg || "";
+    n.classList.toggle("warn", !!warn);
+  }
+  function fillFields(){
+    const d = S.draft;
+    $("fx").value = isInt(d.x) ? d.x : ""; $("fy").value = isInt(d.y) ? d.y : ""; $("fz").value = isInt(d.z) ? d.z : "";
+    $("fname").value = d.name || ""; $("fnotes").value = d.notes || "";
+    setSeg("dimSeg", d.dim); setSeg("kindSeg", d.kind);
+    renderWorldSeg(); renderTypes();
+  }
+  function renderWorldSeg(){
+    const wrap = $("worldPickWrap"), seg = $("worldSeg");
+    wrap.hidden = S.worlds.length < 2;
+    seg.textContent = "";
+    for (const w of S.worlds) {
+      const b = document.createElement("button");
+      b.className = "chip"; b.type = "button"; b.dataset.v = w.id; b.textContent = w.name;
+      b.setAttribute("aria-pressed", String(S.draft.worldId === w.id));
+      seg.append(b);
+    }
+  }
+  function setSeg(id, v){
+    for (const b of $(id).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.v === v));
+  }
+  function renderTypes(){
+    const d = S.draft, grid = $("typeGrid");
+    grid.textContent = "";
+    const all = (d.kind === "build" ? BUILDS : STRUCTURES).concat(S.custom[d.kind] || []);
+    if (d.type && !all.includes(d.type)) all.push(d.type);
+    for (const name of all) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "typechip";
+      b.style.setProperty("--c", KIND_COLOR[d.kind]);
+      const i = document.createElement("i"); b.append(i, document.createTextNode(name));
+      b.setAttribute("aria-pressed", String(d.type === name));
+      b.addEventListener("click", () => {
+        d.type = d.type === name ? null : name;
+        if (d.type && DIM_HINT[d.type] && !d.dimLocked) { d.dim = DIM_HINT[d.type]; setSeg("dimSeg", d.dim); }
+        renderTypes();
+      });
+      grid.append(b);
+    }
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "typechip add"; add.textContent = "+ Add your own";
+    add.addEventListener("click", () => { $("addRow").hidden = false; $("newType").focus(); });
+    grid.append(add);
+  }
+  function addCustomType(){
+    const v = $("newType").value.trim().replace(/\s+/g, " ");
+    if (!v) return;
+    const d = S.draft, list = S.custom[d.kind] || (S.custom[d.kind] = []);
+    const preset = d.kind === "build" ? BUILDS : STRUCTURES;
+    const existing = preset.concat(list).find(x => x.toLowerCase() === v.toLowerCase());
+    if (!existing) { list.push(v); save(); }
+    d.type = existing || v;
+    $("newType").value = ""; $("addRow").hidden = true;
+    renderTypes();
+  }
+  function readInt(id){
+    const raw = $(id).value.replace(/[\s,]/g, "").replace(/[−–]/g, "-");
+    if (raw === "") return { empty: true };
+    if (!/^-?\d+(\.\d+)?$/.test(raw)) return { bad: true };
+    return { v: Math.floor(Number(raw)) };
+  }
+  function savePlace(){
+    const d = S.draft;
+    const x = readInt("fx"), y = readInt("fy"), z = readInt("fz");
+    if (x.empty || z.empty) { $("coordErr").textContent = "X and Z are needed. Y is optional."; return; }
+    if (x.bad || y.bad || z.bad) { $("coordErr").textContent = "Use whole numbers, like 120 or -340."; return; }
+    const entry = {
+      id: d.id || newId("e"), worldId: d.worldId || S.currentWorld,
+      x: x.v, y: y.empty ? null : y.v, z: z.v,
+      dim: d.dim, kind: d.kind, type: d.type || null,
+      name: $("fname").value.trim(), notes: $("fnotes").value.trim(),
+      biome: d.biome || null,
+      createdAt: d.createdAt || Date.now(), updatedAt: Date.now()
+    };
+    const i = S.entries.findIndex(e => e.id === entry.id);
+    if (i >= 0) S.entries[i] = entry; else S.entries.push(entry);
+    const moved = entry.worldId !== S.currentWorld;
+    hideSheet("sheetWrap"); S.draft = null;
+    save(); render();
+    toast(moved ? "Saved to " + S.worlds.find(w => w.id === entry.worldId).name : d.id ? "Place updated" : "Place saved");
+  }
+
+  // ---------- worlds ----------
+  function openWorlds(){
+    renderWorldList();
+    $("worldForm").hidden = true; $("worldActions").hidden = false;
+    showSheet("worldWrap");
+  }
+  function renderWorldList(){
+    const ul = $("worldList");
+    ul.textContent = "";
+    for (const w of S.worlds) {
+      const n = S.entries.filter(e => e.worldId === w.id).length;
+      const li = document.createElement("li"); li.className = "worldrow";
+      const pick = document.createElement("button");
+      pick.type = "button"; pick.className = "worldpick";
+      pick.setAttribute("aria-current", String(w.id === S.currentWorld));
+      const strong = document.createElement("strong"); strong.textContent = w.name;
+      const span = document.createElement("span");
+      span.textContent = (w.server ? w.server + ", " : "") + n + (n === 1 ? " place" : " places");
+      pick.append(strong, span);
+      pick.addEventListener("click", () => {
+        S.currentWorld = w.id; save(); render();
+        hideSheet("worldWrap"); window.scrollTo(0, 0);
+      });
+      const edit = document.createElement("button");
+      edit.type = "button"; edit.className = "btn"; edit.textContent = "Edit";
+      edit.setAttribute("aria-label", "Edit " + w.name);
+      edit.addEventListener("click", () => openWorldForm(w));
+      li.append(pick, edit);
+      ul.append(li);
+    }
+  }
+  function openWorldForm(w){
+    S.editingWorld = w ? w.id : null;
+    $("worldFormTitle").textContent = w ? "Edit world" : "New world";
+    $("wname").value = w ? w.name : "";
+    $("wserver").value = w ? (w.server || "") : "";
+    $("worldErr").textContent = "";
+    $("worldDelBtn").hidden = !w;
+    $("worldForm").hidden = false; $("worldActions").hidden = true;
+    $("wname").focus();
+  }
+  function closeWorldForm(){
+    $("worldForm").hidden = true; $("worldActions").hidden = false; S.editingWorld = null;
+  }
+  function saveWorld(){
+    const name = $("wname").value.trim().replace(/\s+/g, " ");
+    const server = $("wserver").value.trim();
+    if (!name) { $("worldErr").textContent = "Give the world a name."; return; }
+    if (S.editingWorld) {
+      const w = S.worlds.find(x => x.id === S.editingWorld);
+      w.name = name; w.server = server;
+    } else {
+      const w = { id: newId("w"), name, server, createdAt: Date.now() };
+      S.worlds.push(w); S.currentWorld = w.id;
+    }
+    save(); render(); closeWorldForm(); renderWorldList();
+  }
+  function deleteWorld(){
+    const w = S.worlds.find(x => x.id === S.editingWorld);
+    if (!w) return;
+    if (S.worlds.length < 2) { $("worldErr").textContent = "Make another world first. You need at least one."; return; }
+    const n = S.entries.filter(e => e.worldId === w.id).length;
+    if (!confirm("Delete “" + w.name + "”" + (n ? " and its " + n + (n === 1 ? " place" : " places") : "") + "? This can't be undone.")) return;
+    S.entries = S.entries.filter(e => e.worldId !== w.id);
+    S.worlds = S.worlds.filter(x => x.id !== w.id);
+    if (S.currentWorld === w.id) S.currentWorld = S.worlds[0].id;
+    save(); render(); closeWorldForm(); renderWorldList();
+    toast("World deleted");
+  }
+
+  // ---------- helpers ----------
+  function showSheet(id){ $(id).hidden = false; document.body.style.overflow = "hidden"; }
+  function hideSheet(id){
+    $(id).hidden = true;
+    if ($("sheetWrap").hidden && $("worldWrap").hidden) document.body.style.overflow = "";
+  }
+  let toastT;
+  function toast(msg){
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 1800);
+  }
+  async function copy(text){
+    try { await navigator.clipboard.writeText(text); toast("Copied " + text); }
+    catch (e) {
+      const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.append(ta); ta.select();
+      let ok = false; try { ok = document.execCommand("copy"); } catch (err) {}
+      ta.remove(); toast(ok ? "Copied " + text : text);
+    }
+  }
+  function wireChips(id, key){
+    $(id).addEventListener("click", (ev) => {
+      const b = ev.target.closest("button"); if (!b) return;
+      S.filter[key] = b.dataset.v; setSeg(id, b.dataset.v); render();
+    });
+  }
+
+  // ---------- wiring ----------
+  $("snapBtn").addEventListener("click", () => $("camIn").click());
+  $("pickBtn").addEventListener("click", () => $("fileIn").click());
+  $("manualBtn").addEventListener("click", () => openEditor(null));
+  for (const id of ["camIn", "fileIn"]) {
+    $(id).addEventListener("change", (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (f) readPhoto(f, false);
+    });
+  }
+  $("scanCancel").addEventListener("click", () => { S.scanCancelled = true; $("scan").hidden = true; });
+  $("rereadBtn").addEventListener("click", () => { if (S.lastFile) readPhoto(S.lastFile, true); });
+
+  $("q").addEventListener("input", (e) => { S.filter.q = e.target.value; render(); });
+  wireChips("catFilter", "cat"); wireChips("dimFilter", "dim");
+
+  $("dimSeg").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b || !S.draft) return;
+    S.draft.dim = b.dataset.v; S.draft.dimLocked = true; setSeg("dimSeg", b.dataset.v);
+  });
+  $("kindSeg").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b || !S.draft) return;
+    if (S.draft.kind !== b.dataset.v) { S.draft.kind = b.dataset.v; S.draft.type = null; }
+    setSeg("kindSeg", b.dataset.v); renderTypes();
+  });
+  $("worldSeg").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b || !S.draft) return;
+    S.draft.worldId = b.dataset.v; setSeg("worldSeg", b.dataset.v);
+  });
+  for (const s of document.querySelectorAll(".sign")) {
+    s.addEventListener("click", () => {
+      const inp = $(s.dataset.for), v = inp.value.trim();
+      inp.value = v.startsWith("-") ? v.slice(1) : "-" + v;
+      inp.focus();
+    });
+  }
+  $("addTypeBtn").addEventListener("click", addCustomType);
+  $("newType").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addCustomType(); } });
+  $("saveBtn").addEventListener("click", savePlace);
+  $("cancelBtn").addEventListener("click", () => { hideSheet("sheetWrap"); S.draft = null; });
+  $("delBtn").addEventListener("click", () => {
+    const d = S.draft; if (!d || !d.id) return;
+    if (!confirm("Delete this place from the ledger?")) return;
+    S.entries = S.entries.filter(e => e.id !== d.id);
+    hideSheet("sheetWrap"); S.draft = null; save(); render(); toast("Place deleted");
+  });
+
+  $("worldBtn").addEventListener("click", openWorlds);
+  $("newWorldBtn").addEventListener("click", () => openWorldForm(null));
+  $("worldFormCancel").addEventListener("click", closeWorldForm);
+  $("worldSaveBtn").addEventListener("click", saveWorld);
+  $("worldDelBtn").addEventListener("click", deleteWorld);
+  $("worldClose").addEventListener("click", () => hideSheet("worldWrap"));
+  for (const id of ["wname", "wserver"]) $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); saveWorld(); } });
+
+  for (const id of ["sheetWrap", "worldWrap"]) {
+    $(id).addEventListener("click", (e) => { if (e.target === $(id)) { hideSheet(id); if (id === "sheetWrap") S.draft = null; } });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!$("worldWrap").hidden) hideSheet("worldWrap");
+    else if (!$("sheetWrap").hidden) { hideSheet("sheetWrap"); S.draft = null; }
+  });
+
+  // ---------- start ----------
+  load();
+  render();
+})();
+</script>
+</body>
+</html>
